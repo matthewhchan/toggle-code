@@ -1,0 +1,8 @@
+{
+	"id": "toggle-code",
+	"name": "Toggle Code",
+	"version": "1.0.0",
+	"description": "Toggle code-style for selected code.",
+	"author": "matthewhchan",
+	"isDesktopOnly": false
+}
