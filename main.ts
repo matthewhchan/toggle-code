@@ -40,17 +40,24 @@ export default class ToggleCode extends Plugin {
     }
   }
 
+  getReplacement(text: string) {
+    if (text.length >= 2 && text[0] == '`' && text[text.length - 1] == '`') {
+      return text.substring(1, text.length - 1);
+    }
+    return '`' + text + '`';
+  }
+
   toggleCode(editor: CodeMirror.Editor) {
-    // TODO: Toggle off inline code.
     // TODO: Code block if multiple lines selected or nothing selected.
     let selectedText = this.getSelectedText(editor);
     if (!selectedText) {
       return;
     }
-    let newString = '`' + selectedText.content + '`';
+    let newString = this.getReplacement(selectedText.content);
     editor.replaceRange(newString, selectedText.start, selectedText.end);
+    let ch_diff = newString.length - selectedText.content.length;
     editor.setSelection(
         selectedText.start,
-        {line : selectedText.end.line, ch : selectedText.end.ch + 2});
+        {line : selectedText.end.line, ch : selectedText.end.ch + ch_diff});
   };
 }
