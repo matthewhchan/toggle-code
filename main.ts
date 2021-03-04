@@ -40,11 +40,57 @@ export default class ToggleCode extends Plugin {
     }
   }
 
-  getReplacement(text: string) {
-    if (text.length >= 2 && text[0] == '`' && text[text.length - 1] == '`') {
-      return text.substring(1, text.length - 1);
+  toggleCodeBlock(editor: CodeMirror.Editor) {
+    let selectedText = this.getSelectedText(editor);
+    let content = selectedText.content;
+    let selectedStartLine = selectedText.start.line;
+    let selectedEndLine = selectedText.end.line;
+    let codeBlockMatch = content.match(/^```\n([\s\S]*)\n```$/);
+    let replacement = '';
+
+    if (codeBlockMatch) {
+      replacement = codeBlockMatch[1];
+      selectedEndLine -= 2;
+    } else {
+      replacement = '```\n' + selectedText.content + '\n```';
+      selectedEndLine += 2;
+      if (selectedText.start.ch > 0) {
+        replacement = '\n' + replacement;
+        selectedStartLine += 1;
+      }
+      if (selectedText.end.ch < editor.getLine(selectedText.end.line).length) {
+        replacement += '\n';
+        selectedEndLine += 1;
+      }
     }
-    return '`' + text + '`';
+
+    editor.replaceRange(replacement, selectedText.start, selectedText.end);
+    editor.setSelection(
+        {line : selectedStartLine, ch : 0},
+        {line : selectedEndLine, ch : editor.getLine(selectedEndLine).length});
+  }
+
+  toggleInlineCode(editor: CodeMirror.Editor) {
+    let selectedText = this.getSelectedText(editor);
+    let content = selectedText.content;
+    let replacement = '';
+
+    if (content.length >= 2 && content[0] == '`' &&
+        content[content.length - 1] == '`') {
+      // Toggle off.
+      replacement = content.substring(1, content.length - 1);
+    } else {
+      // Toggle on.
+      replacement = '`' + content + '`';
+    }
+
+    editor.replaceRange(replacement, selectedText.start, selectedText.end);
+
+    // Set selection to the modified text.
+    let ch_diff = replacement.length - selectedText.content.length;
+    editor.setSelection(
+        selectedText.start,
+        {line : selectedText.end.line, ch : selectedText.end.ch + ch_diff});
   }
 
   toggleCode(editor: CodeMirror.Editor) {
@@ -53,11 +99,10 @@ export default class ToggleCode extends Plugin {
     if (!selectedText) {
       return;
     }
-    let newString = this.getReplacement(selectedText.content);
-    editor.replaceRange(newString, selectedText.start, selectedText.end);
-    let ch_diff = newString.length - selectedText.content.length;
-    editor.setSelection(
-        selectedText.start,
-        {line : selectedText.end.line, ch : selectedText.end.ch + ch_diff});
+    if (selectedText.content.match(/\n/)) {
+      this.toggleCodeBlock(editor);
+    } else {
+      this.toggleInlineCode(editor);
+    }
   };
 }
