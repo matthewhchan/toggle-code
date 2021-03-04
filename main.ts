@@ -41,13 +41,19 @@ export default class ToggleCode extends Plugin {
   }
 
   getTokenAtCursor(editor: CodeMirror.Editor) {
-    // TODO: Extend token to include surrounding backticks.
     let cursor = editor.getCursor();
     let token = editor.getTokenAt(cursor);
-    return {
-      start: {line: cursor.line, ch: token.start},
-          end: {line: cursor.line, ch: token.end}, content: token.string,
+    if (token.start > 0 && token.end < editor.getLine(cursor.line).length) {
+      let s = editor.getRange({line : cursor.line, ch : token.start - 1},
+                              {line : cursor.line, ch : token.end + 1});
+      if (s[0] == '`' && s[s.length - 1] == '`') {
+        token.start -= 1;
+        token.end += 1;
+      }
     }
+    let start = {line : cursor.line, ch : token.start};
+    let end = {line : cursor.line, ch : token.end};
+    return { start: start, end: end, content: editor.getRange(start, end), }
   }
 
   getSelectedLines(editor: CodeMirror.Editor) {
@@ -70,8 +76,11 @@ export default class ToggleCode extends Plugin {
 
   toggleInlineCode(editor: CodeMirror.Editor) {
     let selectedText = this.getSelectedText(editor);
+    let wasSelection = true;
+    let cursor = editor.getCursor();
     if (!selectedText) {
       selectedText = this.getTokenAtCursor(editor);
+      wasSelection = false;
     }
 
     let content = selectedText.content;
@@ -90,9 +99,14 @@ export default class ToggleCode extends Plugin {
 
     // Set selection to the modified text.
     let ch_diff = replacement.length - selectedText.content.length;
-    editor.setSelection(
-        selectedText.start,
-        {line : selectedText.end.line, ch : selectedText.end.ch + ch_diff});
+
+    if (wasSelection) {
+      editor.setSelection(
+          selectedText.start,
+          {line : selectedText.end.line, ch : selectedText.end.ch + ch_diff});
+    } else {
+      editor.setCursor({line: cursor.line, ch: cursor.ch + ch_diff / 2});
+    }
   }
 
   toggleCodeBlock(editor: CodeMirror.Editor) {
