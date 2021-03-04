@@ -40,8 +40,40 @@ export default class ToggleCode extends Plugin {
     }
   }
 
+  getTokenAtCursor(editor: CodeMirror.Editor) {
+    // TODO: Extend token to include surrounding backticks.
+    let cursor = editor.getCursor();
+    let token = editor.getTokenAt(cursor);
+    return {
+      start: {line: cursor.line, ch: token.start},
+          end: {line: cursor.line, ch: token.end}, content: token.string,
+    }
+  }
+
+  getSelectedLines(editor: CodeMirror.Editor) {
+    if (editor.somethingSelected()) {
+      let cursorStart = editor.getCursor("from");
+      let cursorEnd = editor.getCursor("to");
+
+      cursorStart.ch = 0;
+      cursorEnd.ch = editor.getLine(cursorEnd.line).length;
+
+      let content = editor.getRange(cursorStart, cursorEnd);
+
+      return {
+        start : cursorStart,
+        end : cursorEnd,
+        content : content,
+      };
+    }
+  }
+
   toggleInlineCode(editor: CodeMirror.Editor) {
     let selectedText = this.getSelectedText(editor);
+    if (!selectedText) {
+      selectedText = this.getTokenAtCursor(editor);
+    }
+
     let content = selectedText.content;
     let replacement = '';
 
@@ -63,29 +95,11 @@ export default class ToggleCode extends Plugin {
         {line : selectedText.end.line, ch : selectedText.end.ch + ch_diff});
   }
 
-  getSelectedLines(editor: CodeMirror.Editor) {
-    if (editor.somethingSelected()) {
-      let cursorStart = editor.getCursor("from");
-      let cursorEnd = editor.getCursor("to");
-
-      cursorStart.ch = 0;
-      cursorEnd.ch = editor.getLine(cursorEnd.line).length;
-
-      let content = editor.getRange(cursorStart, cursorEnd);
-
-      return {
-        start : cursorStart,
-        end : cursorEnd,
-        content : content,
-      };
-    }
-  }
-
   toggleCodeBlock(editor: CodeMirror.Editor) {
-    let selectedText = this.getSelectedLines(editor);
-    let content = selectedText.content;
-    let selectedStartLine = selectedText.start.line;
-    let selectedEndLine = selectedText.end.line;
+    let selectedLines = this.getSelectedLines(editor);
+    let selectedStartLine = selectedLines.start.line;
+    let selectedEndLine = selectedLines.end.line;
+    let content = selectedLines.content;
     let codeBlockMatch = content.match(/^```\n([\s\S]*)\n```$/);
     let replacement = '';
 
@@ -93,35 +107,21 @@ export default class ToggleCode extends Plugin {
       replacement = codeBlockMatch[1];
       selectedEndLine -= 2;
     } else {
-      replacement = '```\n' + selectedText.content + '\n```';
+      replacement = '```\n' + content + '\n```';
       selectedEndLine += 2;
-      if (selectedText.start.ch > 0) {
-        replacement = '\n' + replacement;
-        selectedStartLine += 1;
-      }
-      if (selectedText.end.ch < editor.getLine(selectedText.end.line).length) {
-        replacement += '\n';
-        selectedEndLine += 1;
-      }
     }
 
-    editor.replaceRange(replacement, selectedText.start, selectedText.end);
+    editor.replaceRange(replacement, selectedLines.start, selectedLines.end);
     editor.setSelection(
         {line : selectedStartLine, ch : 0},
         {line : selectedEndLine, ch : editor.getLine(selectedEndLine).length});
   }
 
   toggleCode(editor: CodeMirror.Editor) {
-    // TODO: Code block if multiple lines selected or nothing selected.
-    let selectedText = this.getSelectedText(editor);
-    if (!selectedText) {
-      return;
-    }
-
-    if (selectedText.content.match(/\n/)) {
-      this.toggleCodeBlock(editor);
-    } else {
+    if (editor.getCursor("from").line == editor.getCursor("to").line) {
       this.toggleInlineCode(editor);
+    } else {
+      this.toggleCodeBlock(editor);
     }
   };
 }
