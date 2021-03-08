@@ -41,8 +41,13 @@ export default class ToggleCode extends Plugin {
   }
 
   getTokenAtCursor(editor: CodeMirror.Editor) {
+    // TODO: Use findWordAt instead of getTokenAt?
     let cursor = editor.getCursor();
     let token = editor.getTokenAt(cursor);
+
+    // let word = editor.findWordAt(cursor);
+    // console.log('word', editor.getRange(word.anchor, word.head));
+
     if (token.start > 0 && token.end < editor.getLine(cursor.line).length) {
       let s = editor.getRange({line : cursor.line, ch : token.start - 1},
                               {line : cursor.line, ch : token.end + 1});
@@ -99,7 +104,6 @@ export default class ToggleCode extends Plugin {
 
     // Set selection to the modified text.
     let ch_diff = replacement.length - selectedText.content.length;
-
     if (wasSelection) {
       editor.setSelection(
           selectedText.start,
