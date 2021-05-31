@@ -141,5 +141,5 @@ export default class ToggleCode extends Plugin {
     } else {
       this.toggleCodeBlock(editor);
     }
-  };
+  }
 }
